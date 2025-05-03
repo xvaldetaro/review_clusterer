@@ -1,0 +1,31 @@
+[project]
+name = "review-clusterer"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Alex Valdetaro",email = "avaldetaro@snapchat.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "chromadb (>=1.0.7,<2.0.0)",
+    "voyageai (>=0.3.2,<0.4.0)",
+    "pandas (>=2.2.3,<3.0.0)",
+    "scikit-learn (>=1.6.1,<2.0.0)",
+    "rich (>=14.0.0,<15.0.0)",
+    "plotly (>=6.0.1,<7.0.0)",
+    "numpy (>=2.2.5,<3.0.0)",
+    "python-dotenv (>=1.1.0,<2.0.0)",
+    "click (>=8.1.8,<9.0.0)"
+]
+
+[tool.poetry]
+packages = [{include = "review_clusterer", from = "src"}]
+
+[tool.poetry.scripts]
+review-clusterer = "review_clusterer.main:main"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
