@@ -3,6 +3,7 @@ from rich.console import Console
 from chromadb.config import Settings
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from chromadb.utils.batch_utils import create_batches
 import shutil
 
 import chromadb.errors
@@ -11,33 +12,27 @@ console = Console()
 
 
 class ChromaRepository:
-    """
-    Repository for managing review embeddings in a ChromaDB collection.
-    """
+    def get_paths_from_csv_file(
+        csv_file_path: Path, embedder_name: str
+    ) -> tuple[str, Path]:
+        base_collection_name = csv_file_path.stem
+        collection_name = f"{base_collection_name}_{embedder_name}"
+        db_directory = csv_file_path.parent / collection_name
+        return (collection_name, db_directory)
 
     def __init__(
         self,
         collection_name: str,
-        persist_directory: Optional[Path] = None,
+        persist_directory: Path,
         delete_existing_collection: bool = False,
     ):
-        """
-        Initialize the ChromaDB repository.
-
-        Args:
-            collection_name: Name for the collection in the database
-            persist_directory: Optional path to store the database. If None, will use an in-memory database.
-        """
         self.collection_name = collection_name
         self.persist_directory = persist_directory
 
         # Initialize client with persistence settings
-        if persist_directory:
-            self.client = chromadb.PersistentClient(
-                path=str(persist_directory), settings=Settings(allow_reset=True)
-            )
-        else:
-            self.client = chromadb.Client()
+        self.client = chromadb.PersistentClient(
+            path=str(persist_directory), settings=Settings(allow_reset=True)
+        )
 
         # Create or get the collection
         if delete_existing_collection:
@@ -98,10 +93,22 @@ class ChromaRepository:
 
             metadatas.append(metadata)
 
-        # Add to collection
-        self.collection.add(
-            ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas
+        # After creating your large dataset
+        batches = create_batches(
+            api=self.client,
+            ids=ids,
+            documents=documents,
+            embeddings=embeddings,
+            metadatas=metadatas,
         )
+
+        for batch in batches:
+            self.collection.add(
+                ids=batch[0],
+                documents=batch[3],
+                embeddings=batch[1],
+                metadatas=batch[2],
+            )
 
     def query_reviews(
         self, query_embedding: List[float], n_results: int = 5

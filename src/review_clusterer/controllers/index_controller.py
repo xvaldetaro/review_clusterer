@@ -30,9 +30,6 @@ def index_controller(csv_file_path: Path, use_local_embedder: bool = False) -> N
     console = Console()
 
     try:
-        # Create base collection name from CSV filename (without extension)
-        base_collection_name = csv_file_path.stem
-
         console.print(
             Panel.fit(
                 f"[bold]Indexing reviews from[/bold] [cyan]{csv_file_path.name}[/cyan]",
@@ -74,11 +71,6 @@ def index_controller(csv_file_path: Path, use_local_embedder: bool = False) -> N
                 api_key="pa-ZJzGbg--jB3Nq3dRz0cRPAhdLhCGzWeI1DNLxQfhnMP"
             )
 
-        # Create collection name with embedding type
-        collection_name = f"{base_collection_name}_{embedder.EMBEDDER_NAME}"
-        db_directory = csv_file_path.parent / collection_name
-
-        # Process reviews with a progress bar
         with Progress(
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
@@ -106,6 +98,9 @@ def index_controller(csv_file_path: Path, use_local_embedder: bool = False) -> N
         console.print("[3/3] Saving embeddings to ChromaDB...", style="bold")
 
         # Create new repository and add reviews
+        collection_name, db_directory = ChromaRepository.get_paths_from_csv_file(
+            csv_file_path, embedder.EMBEDDER_NAME
+        )
         repository = ChromaRepository(
             collection_name, db_directory, delete_existing_collection=True
         )

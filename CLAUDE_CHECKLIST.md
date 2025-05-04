@@ -4,4 +4,4 @@ Checklist
 2. (x) Implement slice of functionality 1: csv_test
 3. (x) Implement slice of functionality 2: index
 4. (x) Implement slice of functionality 3: search
-5. () Implement slice of functionality 4: cluster
+5. (x) Implement slice of functionality 4: cluster
