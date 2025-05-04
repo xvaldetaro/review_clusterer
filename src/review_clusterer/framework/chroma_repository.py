@@ -1,16 +1,26 @@
 import chromadb
+from rich.console import Console
+from chromadb.config import Settings
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import shutil
 
 import chromadb.errors
 
+console = Console()
+
+
 class ChromaRepository:
     """
     Repository for managing review embeddings in a ChromaDB collection.
     """
 
-    def __init__(self, collection_name: str, persist_directory: Optional[Path] = None):
+    def __init__(
+        self,
+        collection_name: str,
+        persist_directory: Optional[Path] = None,
+        delete_existing_collection: bool = False,
+    ):
         """
         Initialize the ChromaDB repository.
 
@@ -23,38 +33,35 @@ class ChromaRepository:
 
         # Initialize client with persistence settings
         if persist_directory:
-            self.client = chromadb.PersistentClient(path=str(persist_directory))
+            self.client = chromadb.PersistentClient(
+                path=str(persist_directory), settings=Settings(allow_reset=True)
+            )
         else:
             self.client = chromadb.Client()
 
         # Create or get the collection
-        self.recreate_collection()
+        if delete_existing_collection:
+            console.print("Deleting existing collection...")
+            try:
+                self.client.delete_collection(name=self.collection_name)
+            except chromadb.errors.NotFoundError:
+                # Collection doesn't exist yet, which is fine
+                pass
 
-    def recreate_collection(self):
-        """
-        Delete the collection if it exists and create a new one.
-        """
-        # Delete collection if it exists
-        try:
-            self.client.delete_collection(name=self.collection_name)
-        except chromadb.errors.NotFoundError:
-            # Collection doesn't exist yet, which is fine
-            pass
+        self.collection = self.client.get_or_create_collection(
+            name=self.collection_name,
+            metadata={"hnsw:space": "cosine"},
+            embedding_function=None,
+        )
 
-        # Create a new collection
-        self.collection = self.client.create_collection(name=self.collection_name)
-
-    def delete_database(self) -> bool:
+    def delete_database(directory: Path) -> bool:
         """
         Delete the entire database directory if using persistent storage.
 
         Returns:
             True if database was deleted, False if using in-memory db
         """
-        if self.persist_directory and self.persist_directory.exists():
-            shutil.rmtree(self.persist_directory)
-            return True
-        return False
+        shutil.rmtree(directory)
 
     def add_reviews(self, reviews: List[Dict[str, Any]]) -> None:
         """
@@ -78,8 +85,11 @@ class ChromaRepository:
         # Extract metadata (exclude fields not needed in metadata)
         metadatas = []
         for review in reviews:
-            metadata = {k: v for k, v in review.items()
-                      if k not in ["embedding", "formatted_text"]}
+            metadata = {
+                k: v
+                for k, v in review.items()
+                if k not in ["embedding", "formatted_text"]
+            }
 
             # Ensure all metadata values are strings or numbers
             for key, value in metadata.items():
@@ -90,10 +100,7 @@ class ChromaRepository:
 
         # Add to collection
         self.collection.add(
-            ids=ids,
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas
+            ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas
         )
 
     def query_reviews(
@@ -112,7 +119,7 @@ class ChromaRepository:
         results = self.collection.query(
             query_embeddings=[query_embedding],
             n_results=n_results,
-            include=["documents", "metadatas", "distances"]
+            include=["documents", "metadatas", "distances"],
         )
 
         return results
