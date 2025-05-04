@@ -5,7 +5,7 @@ from rich.table import Table
 import time
 
 from review_clusterer.framework.chroma_repository import ChromaRepository
-from review_clusterer.framework.clusterer import cluster_reviews
+from review_clusterer.framework.clusterer import cluster_reviews, hdbscan_cluster_reviews
 from review_clusterer.framework.clusterer import plot_elbow
 from review_clusterer.framework.voyage_embedder import VoyageEmbedder
 from review_clusterer.framework.local_embedder import LocalEmbedder
@@ -80,7 +80,15 @@ def plot_cluster_distribution(
 
 
 def cluster_controller(
-    csv_file_path: Path, n_clusters: int, use_local_embedder: bool = False
+    csv_file_path: Path, 
+    n_clusters: int = None, 
+    use_local_embedder: bool = False,
+    use_hdbscan: bool = False,
+    min_cluster_size: int = 10,
+    min_samples: int = 5,
+    use_umap: bool = True,
+    umap_n_neighbors: int = 15,
+    umap_n_components: int = 10,
 ) -> None:
     start_time = time.time()
 
@@ -89,14 +97,41 @@ def cluster_controller(
     console.print(
         f"[green]Clustering {len(reviews_with_embeddings)} reviews...[/green]"
     )
-    clusters = cluster_reviews(reviews_with_embeddings, n_clusters)
     
-    console.print(
-        f"[green]Displaying clusters sorted by average rating (worst to best)...[/green]"
-    )
-    
-    # Display clusters
-    display_clusters(clusters)
+    if use_hdbscan:
+        console.print("[green]Using HDBSCAN clustering algorithm...[/green]")
+        clusters, unclustered_reviews = hdbscan_cluster_reviews(
+            reviews_with_embeddings,
+            min_cluster_size=min_cluster_size,
+            min_samples=min_samples,
+            use_umap=use_umap,
+            umap_n_neighbors=umap_n_neighbors,
+            umap_n_components=umap_n_components,
+        )
+        
+        console.print(
+            f"[green]Displaying {len(clusters)} clusters sorted by average rating (worst to best)...[/green]"
+        )
+        
+        # Display clusters
+        display_clusters(clusters)
+        
+        # Display unclustered reviews if any
+        if unclustered_reviews:
+            console.print(
+                f"[yellow]Found {len(unclustered_reviews)} unclustered reviews that don't fit into any cluster[/yellow]"
+            )
+            display_unclustered_reviews(unclustered_reviews)
+    else:
+        console.print("[green]Using K-means clustering algorithm...[/green]")
+        clusters = cluster_reviews(reviews_with_embeddings, n_clusters)
+        
+        console.print(
+            f"[green]Displaying clusters sorted by average rating (worst to best)...[/green]"
+        )
+        
+        # Display clusters
+        display_clusters(clusters)
 
     elapsed_time = time.time() - start_time
     console.print(f"[green]Clustering completed in {elapsed_time:.2f} seconds[/green]")
@@ -147,3 +182,48 @@ def display_clusters(clusters: list) -> None:
         # Display the table
         console.print(table)
         console.print("\n")
+
+
+def display_unclustered_reviews(unclustered_reviews: list, limit: int = 20) -> None:
+    """
+    Display unclustered reviews in a formatted output.
+    
+    Args:
+        unclustered_reviews: List of unclustered review dictionaries
+        limit: Maximum number of reviews to display
+    """
+    # Create a table for unclustered reviews
+    table = Table(
+        title=f"Unclustered Reviews ({len(unclustered_reviews)} total, showing top {min(limit, len(unclustered_reviews))})"
+    )
+    
+    table.add_column("ID", style="cyan", no_wrap=True)
+    table.add_column("Rating", style="magenta")
+    table.add_column("Outlier Score", style="yellow")
+    table.add_column("Title", style="blue")
+    table.add_column("Content", style="white")
+    
+    # Get the top N reviews (by outlier score if available)
+    reviews_to_display = unclustered_reviews[:limit]
+    
+    # Add rows for each review
+    for review in reviews_to_display:
+        review_id = review["id"]
+        try:
+            rating = f"{float(review.get('review_rating', 0)):.1f}/5"
+        except (ValueError, TypeError):
+            rating = "N/A"
+        
+        outlier_score = f"{review.get('outlier_score', 0):.4f}" if "outlier_score" in review else "N/A"
+        title = review.get("review_title", "")
+        content = review.get("review_details", "")
+        
+        # Truncate content if too long
+        if len(content) > 100:
+            content = content[:97] + "..."
+        
+        table.add_row(str(review_id), rating, outlier_score, title, content)
+    
+    # Display the table
+    console.print(table)
+    console.print("\n")

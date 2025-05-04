@@ -73,25 +73,78 @@ def search(csv_file_path, local, top):
     "csv_file_path",
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
 )
-@click.argument("clusters", type=int)
+@click.argument("clusters", type=int, required=False)
 @click.option(
     "--local", is_flag=True, help="Use local embedder instead of VoyageAI API"
 )
-def cluster(csv_file_path, clusters, local):
+@click.option(
+    "--hdbscan", is_flag=True, 
+    help="Use HDBSCAN clustering instead of K-means. This algorithm automatically detects outliers."
+)
+@click.option(
+    "--min-cluster-size", type=int, default=10,
+    help="Minimum number of points to form a cluster (HDBSCAN only)"
+)
+@click.option(
+    "--min-samples", type=int, default=5,
+    help="Controls the resilience to noise (HDBSCAN only)"
+)
+@click.option(
+    "--no-umap", is_flag=True,
+    help="Disable UMAP dimensionality reduction (HDBSCAN only)"
+)
+@click.option(
+    "--umap-neighbors", type=int, default=15,
+    help="Number of neighbors for UMAP (HDBSCAN only)"
+)
+@click.option(
+    "--umap-components", type=int, default=10,
+    help="Number of components for dimensionality reduction (HDBSCAN only)"
+)
+def cluster(
+    csv_file_path, 
+    clusters, 
+    local, 
+    hdbscan, 
+    min_cluster_size, 
+    min_samples,
+    no_umap,
+    umap_neighbors,
+    umap_components,
+):
     """
     Cluster reviews based on their embeddings and display the results.
 
     This command will:
     1. Load a ChromaDB database matching the CSV file name
-    2. Determine the optimal number of clusters (if not specified)
-    3. Run a clustering algorithm to group similar reviews
-    4. Display the resulting clusters sorted by average review rating (worst to best)
+    2. Run a clustering algorithm to group similar reviews
+    3. Display the resulting clusters sorted by average review rating (worst to best)
        with statistics and representative reviews
 
     The database must have been previously created with the 'index' command.
+
+    Two clustering methods are available:
+    - K-means (default): Requires number of clusters, assigns all reviews to clusters
+    - HDBSCAN (with --hdbscan): Automatically finds clusters, identifies outliers
+
+    When using HDBSCAN, you can adjust:
+    - min-cluster-size: Minimum reviews to form a cluster (default: 10)
+    - min-samples: Controls how conservative clustering is (default: 5)
+    - UMAP dimensionality reduction (enabled by default)
     """
+    if hdbscan and clusters is not None:
+        click.echo("Warning: When using HDBSCAN, the 'clusters' argument is ignored as cluster count is determined automatically")
+
     cluster_controller(
-        Path(csv_file_path), use_local_embedder=local, n_clusters=clusters
+        Path(csv_file_path), 
+        n_clusters=clusters, 
+        use_local_embedder=local,
+        use_hdbscan=hdbscan,
+        min_cluster_size=min_cluster_size,
+        min_samples=min_samples,
+        use_umap=not no_umap,
+        umap_n_neighbors=umap_neighbors,
+        umap_n_components=umap_components,
     )
 
 

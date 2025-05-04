@@ -4,6 +4,8 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import plotly.graph_objects as go
 from rich.console import Console
+import hdbscan
+from umap import UMAP
 
 console = Console()
 
@@ -274,8 +276,165 @@ def cluster_reviews(
         )
 
     # Sort clusters by average rating (ascending, from worst to best)
-    cluster_results = sorted(
-        cluster_results, key=lambda x: x["avg_rating"]
-    )
+    cluster_results = sorted(cluster_results, key=lambda x: x["avg_rating"])
 
     return cluster_results
+
+
+def hdbscan_cluster_reviews(
+    reviews_with_embeddings: List[Dict[str, Any]],
+    min_cluster_size: int = 10,
+    min_samples: int = 5,
+    use_umap: bool = True,
+    umap_n_neighbors: int = 15,
+    umap_n_components: int = 10,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    Cluster reviews using HDBSCAN algorithm, which can detect outliers.
+
+    Args:
+        reviews_with_embeddings: List of review dictionaries with embeddings
+        min_cluster_size: Minimum number of points to form a cluster
+        min_samples: Controls the resilience to noise
+        use_umap: Whether to use UMAP dimensionality reduction
+        umap_n_neighbors: Number of neighbors for UMAP
+        umap_n_components: Number of components for dimensionality reduction
+
+    Returns:
+        Tuple of (list of clusters, list of unclustered reviews)
+    """
+    if not reviews_with_embeddings:
+        return [], []
+
+    # Extract embeddings
+    embeddings = [review["embedding"] for review in reviews_with_embeddings]
+
+    # Normalize embeddings
+    # Check for zero vectors before normalization
+    for i, vec in enumerate(embeddings):
+        if np.linalg.norm(vec) < 1e-10:  # Almost zero
+            print(f"Warning: Vector {i} has near-zero norm")
+
+    # Then normalize with protection against division by zero
+    embeddings = [vec / (np.linalg.norm(vec) + 1e-10) for vec in embeddings]
+
+    # Convert to numpy array
+    X = np.array(embeddings)
+    X = np.clip(X, -100, 100)
+    assert not np.isnan(X).any(), "NaNs in embeddings"
+    assert not np.isinf(X).any(), "Infinite values in embeddings"
+
+    # Optional dimensionality reduction with UMAP
+    if use_umap:
+        console.print("[green]Reducing dimensionality with UMAP...[/green]")
+        X = UMAP(
+            n_neighbors=umap_n_neighbors,
+            n_components=umap_n_components,
+            random_state=42,
+        ).fit_transform(X)
+        console.print(
+            f"[green]Reduced dimensionality to {umap_n_components} components[/green]"
+        )
+
+    # Apply HDBSCAN clustering
+    console.print(
+        f"[green]Applying HDBSCAN clustering with min_cluster_size={min_cluster_size}, min_samples={min_samples}...[/green]"
+    )
+    clusterer = hdbscan.HDBSCAN(
+        min_cluster_size=min_cluster_size, min_samples=min_samples
+    )
+    labels = clusterer.fit_predict(X)
+
+    # Count clusters and outliers
+    unique_labels = set(labels)
+    n_clusters = len(unique_labels) - (1 if -1 in unique_labels else 0)
+    n_outliers = np.sum(labels == -1)
+
+    console.print(
+        f"[green]Found {n_clusters} clusters and {n_outliers} outliers[/green]"
+    )
+
+    # Assign cluster labels to reviews
+    for i, review in enumerate(reviews_with_embeddings):
+        review["cluster"] = int(labels[i])
+        if hasattr(clusterer, "outlier_scores_"):
+            review["outlier_score"] = float(clusterer.outlier_scores_[i])
+
+    # Separate clustered and unclustered reviews
+    clustered_reviews = [r for r in reviews_with_embeddings if r["cluster"] != -1]
+    unclustered_reviews = [r for r in reviews_with_embeddings if r["cluster"] == -1]
+
+    # If we have no clusters, return early
+    if not clustered_reviews:
+        return [], unclustered_reviews
+
+    # Organize reviews by cluster
+    clusters = {}
+    for review in clustered_reviews:
+        cluster_id = review["cluster"]
+        if cluster_id not in clusters:
+            clusters[cluster_id] = {
+                "id": cluster_id,
+                "reviews": [],
+            }
+        clusters[cluster_id]["reviews"].append(review)
+
+    # Calculate cluster metrics and centers
+    cluster_results = []
+    for cluster_id, cluster in clusters.items():
+        reviews = cluster["reviews"]
+
+        # Calculate cluster center (centroid)
+        cluster_embeddings = np.array([r["embedding"] for r in reviews])
+        center = np.mean(cluster_embeddings, axis=0)
+
+        # Calculate distances from center
+        distances = []
+        ratings = []
+        for review in reviews:
+            embedding = np.array(review["embedding"])
+            # Cosine distance
+            EPSILON = 1e-8
+            norm_center = np.linalg.norm(center) + EPSILON
+            norm_embedding = np.linalg.norm(embedding) + EPSILON
+            distance = 1 - (np.dot(embedding, center) / (norm_embedding * norm_center))
+            review["distance_from_center"] = float(distance)
+            distances.append(distance)
+
+            # Extract rating
+            try:
+                rating = float(review.get("review_rating", 0))
+                ratings.append(rating)
+            except (ValueError, TypeError):
+                pass
+
+        # Sort reviews by distance from center
+        sorted_reviews = sorted(reviews, key=lambda x: x["distance_from_center"])
+
+        # Calculate cluster metrics
+        mean_distance = float(np.mean(distances)) if distances else 0
+        avg_rating = float(np.mean(ratings)) if ratings else 0
+
+        cluster_results.append(
+            {
+                "id": cluster_id,
+                "review_count": len(reviews),
+                "mean_distance": mean_distance,
+                "avg_rating": avg_rating,
+                "reviews": sorted_reviews,
+                "center": center.tolist(),
+            }
+        )
+
+    # Sort clusters by average rating (ascending, from worst to best)
+    cluster_results = sorted(
+        cluster_results, key=lambda x: x["avg_rating"], reverse=True
+    )
+
+    # Sort unclustered reviews by outlier score if available
+    if unclustered_reviews and "outlier_score" in unclustered_reviews[0]:
+        unclustered_reviews = sorted(
+            unclustered_reviews, key=lambda x: x.get("outlier_score", 0), reverse=False
+        )
+
+    return cluster_results, unclustered_reviews
