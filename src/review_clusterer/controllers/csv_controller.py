@@ -3,7 +3,7 @@ from rich.console import Console
 from rich.table import Table
 from rich import box
 
-from review_clusterer.processors.csv_processor import CsvProcessor
+from review_clusterer.framework.csv_processor import CsvProcessor
 
 def csv_test_controller(csv_file_path: Path) -> None:
     """

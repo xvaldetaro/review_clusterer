@@ -1,6 +1,7 @@
 import click
 from pathlib import Path
 from review_clusterer.controllers.csv_controller import csv_test_controller
+from review_clusterer.controllers.index_controller import index_controller
 
 @click.group()
 def cli():
@@ -12,6 +13,21 @@ def cli():
 def csv_test(csv_file_path):
     """Test loading a CSV file by displaying the first 5 rows."""
     csv_test_controller(Path(csv_file_path))
+
+@cli.command('index')
+@click.argument('csv_file_path', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
+@click.option('--local', is_flag=True, help='Use local embedder instead of VoyageAI API')
+def index(csv_file_path, local):
+    """
+    Process a CSV file, create embeddings, and save to a ChromaDB vector database.
+    
+    The database will be named after the CSV file (without extension) and will
+    be stored in the same directory as the CSV file.
+    
+    By default, the embeddings are created using VoyageAI API. Use the --local
+    flag to use a local sentence-transformers model instead.
+    """
+    index_controller(Path(csv_file_path), use_local_embedder=local)
 
 if __name__ == "__main__":
     cli()
