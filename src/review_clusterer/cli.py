@@ -8,6 +8,10 @@ from review_clusterer.controllers.cluster_controller import (
     plot_cluster_distribution,
 )
 from review_clusterer.controllers.cluster_controller import plot_elbow
+from review_clusterer.controllers.llm_controller import (
+    llm_test_controller,
+    llm_structured_test_controller,
+)
 
 
 @click.group()
@@ -189,6 +193,70 @@ def do_plot_elbow(csv_file_path, local):
     The database must have been previously created with the 'index' command.
     """
     plot_cluster_distribution(Path(csv_file_path), use_local_embedder=local)
+
+
+@cli.command("llm-test")
+@click.option("--provider", type=click.Choice(["openai", "anthropic"]), default="openai", help="LLM provider to use")
+@click.option("--model", help="Model name (defaults to gpt-4o for OpenAI or claude-3-opus for Anthropic)")
+@click.option("--prompt", help="Prompt to send to the LLM", default="Summarize the key points of effective customer service.")
+@click.option(
+    "--api-key-file", 
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+    help="Path to a file containing the API key"
+)
+def llm_test(provider, model, prompt, api_key_file):
+    """
+    Test the LLM client with a simple prompt.
+    
+    This command sends a prompt to the specified LLM provider and displays the response.
+    It can use either OpenAI or Anthropic (Claude) as the provider.
+    
+    API keys can be provided via environment variables (OPENAI_API_KEY or ANTHROPIC_API_KEY)
+    or via a file specified with --api-key-file.
+    """
+    api_key_path = Path(api_key_file) if api_key_file else None
+    llm_test_controller(provider, prompt, model, api_key_path)
+
+
+@cli.command("llm-structured-test")
+@click.option("--provider", type=click.Choice(["openai", "anthropic"]), default="openai", help="LLM provider to use")
+@click.option("--model", help="Model name (defaults to gpt-4o for OpenAI or claude-3-opus for Anthropic)")
+@click.option(
+    "--prompt", 
+    help="Prompt to send to the LLM", 
+    default="Analyze these customer reviews for sentiment and key themes: 'The product exceeded my expectations, it's fast and reliable.', 'Terrible customer service, had to wait for hours.'"
+)
+@click.option(
+    "--schema-file", 
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+    help="Path to a JSON file containing the response schema"
+)
+@click.option(
+    "--api-key-file", 
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+    help="Path to a file containing the API key"
+)
+def llm_structured_test(provider, model, prompt, schema_file, api_key_file):
+    """
+    Test the LLM client with a structured output request.
+    
+    This command sends a prompt to the specified LLM provider and requests a structured
+    JSON response based on the provided schema.
+    
+    API keys can be provided via environment variables (OPENAI_API_KEY or ANTHROPIC_API_KEY)
+    or via a file specified with --api-key-file.
+    
+    If no schema file is provided, a default schema for sentiment analysis will be used.
+    """
+    import json
+    
+    schema = None
+    if schema_file:
+        with open(schema_file, 'r') as f:
+            schema = json.load(f)
+    
+    api_key_path = Path(api_key_file) if api_key_file else None
+    llm_structured_test_controller(provider, prompt, schema, model, api_key_path)
 
 
 if __name__ == "__main__":

@@ -5,3 +5,8 @@ Checklist
 3. (x) Implement slice of functionality 2: index
 4. (x) Implement slice of functionality 3: search
 5. (x) Implement slice of functionality 4: cluster
+
+New Checklist for review analysis
+
+1. () Implement slice of functionality 1: A client that calls an OpenAI style API with a prompt and gets a response. A test command for it.
+2. () Help me think about the best way to programmatically parse and understand the output of the LLM. Is MCP something that would work here?

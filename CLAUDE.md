@@ -51,6 +51,7 @@ Core Features to Implement
 3. Cluster reviews to identify common themes and sentiments
 4. Search reviews using semantic similarity
 5. Visualize reviews with formatted output using Rich
+6. Analyze clusters using LLMs to generate insights and summaries
 
 # Technical Requirements
 
@@ -68,6 +69,7 @@ We do this interactively and you should stop and ask me if you think a different
 
 - Use voyageai to create embeddings. Documentation at https://docs.voyageai.com/docs/api-key-and-installation . Load the api key from a local file which I will add after you generate the code.
 - Use chromaDB for storing the embeddings. Documentation at https://docs.trychroma.com/reference/python
+- Use openai and anthropic for LLM-based review analysis. API keys can be provided via environment variables or text files.
 - Stop and tell me
 
 # Overall implementation architecture
@@ -87,6 +89,8 @@ We do this interactively and you should stop and ask me if you think a different
   1. Figure out what cluster count makes sense for the data. I remember seeing some way that you would plot something and check where they curve of the hockey stick was and that was the sweet spot.
   2. Run the clustering algorithm using the most widely used python libray.
   3. Display the list of clusters: Each cluster is printed as a "Cluster 1..$cluster_count, $review_count reviews. Mean distance $mean_dist. Avg rating: $avg_rating/5 \n$summary_of_5_most_central_reviews
+- llm-test - Options: --provider, --model, --prompt, --api-key-file - Tests LLM integration with a simple prompt
+- llm-structured-test - Options: --provider, --model, --prompt, --schema-file, --api-key-file - Tests LLM's ability to provide structured JSON output
 
 2. Multiple Controller modules. One for each slice of functionality coming for the command line. Ideally each CLI command will delegate the orchestration of everything to its controller. E.g. `cluster` command should have a `clusterController` method or class (if state is necessary).
 
@@ -95,5 +99,6 @@ We do this interactively and you should stop and ask me if you think a different
    3.2 A Embedder module that deals with calling voyager api and creating embeddings
    3.3 A db repository module that wraps access to chromadb for a specific file (probably oo and have state)
    3.4 A Cluster module that will receive a query result from the DB and create a cluster structure for it
+   3.5 A LLMClient module that provides a unified interface for working with different LLM providers (OpenAI and Anthropic)
 
 4. Any thing I have missed here. We do this interactively and you should stop and ask me if you think a different aproach would make more sense.
