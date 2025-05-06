@@ -5,15 +5,11 @@ import logging
 import json
 from pathlib import Path
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class LLMClient(ABC):
-    """
-    Abstract base class that defines the interface for LLM APIs.
-    """
     LLM_NAME: str = "base"  # Should be overridden by child classes
     
     @abstractmethod
@@ -24,15 +20,7 @@ class LLMClient(ABC):
         temperature: float = 0.7
     ) -> str:
         """
-        Generate a text completion using the LLM.
-        
-        Args:
-            prompt: The prompt text to send to the LLM
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0-1.0)
-            
-        Returns:
-            The generated completion text
+        temperature: Sampling temperature (0.0-1.0)
         """
         pass
 
@@ -44,23 +32,12 @@ class LLMClient(ABC):
         temperature: float = 0.7
     ) -> Dict[str, Any]:
         """
-        Generate a structured output (JSON) using the LLM.
-        
-        Args:
-            prompt: The prompt text to send to the LLM
-            response_format: Schema definition for the desired response format
-            temperature: Sampling temperature (0.0-1.0)
-            
-        Returns:
-            The generated response as a Python dictionary
+        temperature: Sampling temperature (0.0-1.0)
         """
         pass
 
 
 class OpenAIClient(LLMClient):
-    """
-    Implementation of LLMClient for OpenAI API.
-    """
     LLM_NAME: str = "openai"
     
     def __init__(
@@ -68,13 +45,6 @@ class OpenAIClient(LLMClient):
         model_name: str = "gpt-4-turbo", 
         api_key: Optional[str] = None
     ):
-        """
-        Initialize the OpenAI client.
-        
-        Args:
-            model_name: The OpenAI model to use
-            api_key: OpenAI API key (if None, will look for OPENAI_API_KEY env var)
-        """
         try:
             from openai import OpenAI
         except ImportError:
@@ -100,15 +70,7 @@ class OpenAIClient(LLMClient):
         temperature: float = 0.7
     ) -> str:
         """
-        Generate a text completion using OpenAI.
-        
-        Args:
-            prompt: The prompt text to send to OpenAI
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0-1.0)
-            
-        Returns:
-            The generated completion text
+        temperature: Sampling temperature (0.0-1.0)
         """
         try:
             response = self.client.chat.completions.create(
@@ -129,18 +91,9 @@ class OpenAIClient(LLMClient):
         temperature: float = 0.7
     ) -> Dict[str, Any]:
         """
-        Generate a structured output (JSON) using OpenAI.
-        
-        Args:
-            prompt: The prompt text to send to OpenAI
-            response_format: Schema definition for the desired response format
-            temperature: Sampling temperature (0.0-1.0)
-            
-        Returns:
-            The generated response as a Python dictionary
+        temperature: Sampling temperature (0.0-1.0)
         """
         try:
-            # Add instructions about the response format to the prompt
             formatted_prompt = f"{prompt}\n\nRespond with a JSON object that matches this schema: {json.dumps(response_format)}"
             
             response = self.client.chat.completions.create(
@@ -158,9 +111,6 @@ class OpenAIClient(LLMClient):
 
 
 class AnthropicClient(LLMClient):
-    """
-    Implementation of LLMClient for Anthropic Claude API.
-    """
     LLM_NAME: str = "anthropic"
     
     def __init__(
@@ -168,13 +118,6 @@ class AnthropicClient(LLMClient):
         model_name: str = "claude-3-opus-20240229", 
         api_key: Optional[str] = None
     ):
-        """
-        Initialize the Anthropic Claude client.
-        
-        Args:
-            model_name: The Claude model to use
-            api_key: Anthropic API key (if None, will look for ANTHROPIC_API_KEY env var)
-        """
         try:
             from anthropic import Anthropic
         except ImportError:
@@ -200,15 +143,7 @@ class AnthropicClient(LLMClient):
         temperature: float = 0.7
     ) -> str:
         """
-        Generate a text completion using Anthropic Claude.
-        
-        Args:
-            prompt: The prompt text to send to Claude
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0-1.0)
-            
-        Returns:
-            The generated completion text
+        temperature: Sampling temperature (0.0-1.0)
         """
         try:
             response = self.client.messages.create(
@@ -229,18 +164,9 @@ class AnthropicClient(LLMClient):
         temperature: float = 0.7
     ) -> Dict[str, Any]:
         """
-        Generate a structured output (JSON) using Anthropic Claude.
-        
-        Args:
-            prompt: The prompt text to send to Claude
-            response_format: Schema definition for the desired response format
-            temperature: Sampling temperature (0.0-1.0)
-            
-        Returns:
-            The generated response as a Python dictionary
+        temperature: Sampling temperature (0.0-1.0)
         """
         try:
-            # Construct a tool for Claude-3 to use for JSON output
             tools = [{
                 "name": "generate_structured_response",
                 "description": "Generate a structured response based on the user's query",
@@ -260,21 +186,17 @@ class AnthropicClient(LLMClient):
                 messages=[{"role": "user", "content": prompt}]
             )
             
-            # Get tool use from response
             if response.content[0].type == "tool_use":
                 tool_use = response.content[0].tool_use
                 return tool_use.input
             else:
-                # Try to extract JSON from text response
                 content = response.content[0].text
                 try:
-                    # Search for JSON block in the response
                     import re
                     json_match = re.search(r'```json\n(.*?)\n```', content, re.DOTALL)
                     if json_match:
                         json_str = json_match.group(1)
                     else:
-                        # Try to find any JSON-like structure
                         json_match = re.search(r'(\{.*\})', content, re.DOTALL)
                         if json_match:
                             json_str = json_match.group(1)
@@ -291,16 +213,6 @@ class AnthropicClient(LLMClient):
 
 
 def get_llm_client(provider: str = "openai", **kwargs) -> LLMClient:
-    """
-    Factory function to get an appropriate LLM client.
-    
-    Args:
-        provider: The LLM provider to use ('openai' or 'anthropic')
-        **kwargs: Additional arguments to pass to the LLM client constructor
-        
-    Returns:
-        An instance of an LLMClient
-    """
     if provider.lower() == "openai":
         return OpenAIClient(**kwargs)
     elif provider.lower() == "anthropic":
@@ -310,16 +222,6 @@ def get_llm_client(provider: str = "openai", **kwargs) -> LLMClient:
 
 
 def get_api_key_from_file(key_file_path: Union[str, Path], provider: str) -> str:
-    """
-    Read an API key from a file.
-    
-    Args:
-        key_file_path: Path to the file containing the API key
-        provider: The LLM provider ('openai' or 'anthropic') to determine key format
-        
-    Returns:
-        The API key as a string
-    """
     path = Path(key_file_path)
     if not path.exists():
         raise FileNotFoundError(f"API key file not found: {path}")

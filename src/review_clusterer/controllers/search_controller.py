@@ -13,17 +13,6 @@ from review_clusterer.framework.chroma_repository import ChromaRepository
 
 
 def format_search_result(result: Dict[str, Any], index: int) -> Panel:
-    """
-    Format a single search result into a rich Panel with a compact layout.
-
-    Args:
-        result: A search result dictionary containing metadata
-        index: The position in the result list
-
-    Returns:
-        A rich Panel object displaying the result in a compact format
-    """
-    # Extract metadata for display
     title = result.get("review_title", "No title")
     rating = result.get("review_rating", "No rating")
     details = result.get("review_details", "No details")
@@ -31,7 +20,6 @@ def format_search_result(result: Dict[str, Any], index: int) -> Panel:
     date = result.get("date", "No date")
     distance = result.get("distance", 0.0)
 
-    # Format metadata in a compact horizontal layout
     metadata = Text.from_markup(
         f"[bold cyan]Rating:[/bold cyan] {rating}/5 stars | "
         f"[bold cyan]Reviewer:[/bold cyan] {reviewer} | "
@@ -39,8 +27,6 @@ def format_search_result(result: Dict[str, Any], index: int) -> Panel:
         f"[bold cyan]Similarity:[/bold cyan] {(1 - distance) * 100:.1f}%"
     )
 
-    # Create a compact panel with the title, metadata, and truncated details
-    # Limit details to 200 characters and add ellipsis if longer
     truncated_details = details[:200] + ("..." if len(details) > 200 else "")
 
     content = Text.from_markup(
@@ -53,39 +39,25 @@ def format_search_result(result: Dict[str, Any], index: int) -> Panel:
         border_style="green",
         box=box.ROUNDED,
         title_align="left",
-        padding=(1, 1),  # Reduced padding for more compact display
+        padding=(1, 1),
     )
 
 
 def search_controller(
     csv_file_path: Path, use_local_embedder: bool = False, top_n: int = 3
 ) -> None:
-    """
-    Controller for the search command. Loads a ChromaDB database matching the CSV file name
-    and provides an interactive search interface.
-
-    Args:
-        csv_file_path: Path to the CSV file that was indexed
-        use_local_embedder: If True, use the local sentence-transformers embedder
-                          instead of VoyageAI. Default is False.
-        top_n: Number of top results to display
-    """
     console = Console()
 
     try:
-        # Initialize embedder (same as in index_controller)
         if use_local_embedder:
             embedder = LocalEmbedder()
         else:
             embedder = VoyageEmbedder()
 
-        # Create collection name with embedding type (must match what was used in indexing)
-
         collection_name, db_directory = ChromaRepository.get_paths_from_csv_file(
             csv_file_path, embedder.EMBEDDER_NAME
         )
 
-        # Check if the database exists
         if not db_directory.exists():
             console.print(
                 f"[bold red]Error:[/bold red] Database not found at {db_directory}. "
@@ -93,7 +65,6 @@ def search_controller(
             )
             return
 
-        # Connect to the ChromaDB repository
         repository = ChromaRepository(collection_name, db_directory)
 
         console.print(
@@ -105,43 +76,34 @@ def search_controller(
         )
         console.print("Type your search query or [bold red]exit[/bold red] to quit.")
 
-        # Interactive search loop
         while True:
-            # Get user query
             query = console.input("\n[bold cyan]Search query:[/bold cyan] ")
 
-            # Exit condition
             if query.lower() in ("exit", "quit", "q"):
                 console.print("[bold]Exiting search mode.[/bold]")
                 break
 
-            # Skip empty queries
             if not query.strip():
                 continue
 
             console.print(f"[bold]Searching for:[/bold] {query}")
 
-            # Create embedding for the query
             query_embedding = embedder.create_embedding(query)
 
-            # Query the database
             results = repository.query_reviews(query_embedding, n_results=top_n)
 
             if not results or len(results["ids"][0]) == 0:
                 console.print("[yellow]No results found.[/yellow]")
                 continue
 
-            # Display results
             console.print(
                 f"\n[bold]Top {min(top_n, len(results['ids'][0]))} Results:[/bold]\n"
             )
 
             for i in range(len(results["ids"][0])):
-                # Combine metadata with distance for display
                 result = results["metadatas"][0][i].copy()
                 result["distance"] = results["distances"][0][i]
 
-                # Display the formatted result
                 console.print(format_search_result(result, i))
 
     except Exception as e:

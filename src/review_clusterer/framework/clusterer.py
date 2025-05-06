@@ -13,30 +13,16 @@ console = Console()
 def determine_optimal_clusters(
     embeddings: List[List[float]], max_clusters: int = 50
 ) -> Tuple[int, Dict[str, Any]]:
-    """
-    Determine the optimal number of clusters using the elbow method and silhouette scores.
-
-    Args:
-        embeddings: List of embedding vectors
-        max_clusters: Maximum number of clusters to consider
-
-    Returns:
-        Tuple of (optimal_k, visualization_data)
-    """
     if len(embeddings) <= 1:
         return 1, {"inertias": [], "silhouette_scores": [], "k_values": []}
 
-    # Convert embeddings to numpy array
     X = np.array(embeddings)
 
-    # Prepare for elbow method
     k_values = range(2, min(max_clusters + 1, len(embeddings)))
     inertias = []
     silhouette_scores_list = []
 
-    # Calculate inertia and silhouette score for different k values
     for k in k_values:
-        # Skip silhouette score calculation if only one sample per cluster would exist
         if len(embeddings) <= k:
             continue
 
@@ -44,7 +30,6 @@ def determine_optimal_clusters(
         kmeans.fit(X)
         inertias.append(kmeans.inertia_)
 
-        # Calculate silhouette score if we have enough samples
         if len(embeddings) > k:
             try:
                 silhouette_avg = silhouette_score(X, kmeans.labels_)
@@ -55,7 +40,6 @@ def determine_optimal_clusters(
                 )
                 silhouette_scores_list.append(0)
 
-    # If we couldn't calculate any values, default to 3 clusters
     if not inertias:
         return min(3, len(embeddings)), {
             "inertias": [],
@@ -63,20 +47,16 @@ def determine_optimal_clusters(
             "k_values": [],
         }
 
-    # Find the elbow point (where the rate of decrease sharply changes)
     inertia_diffs = np.diff(inertias)
     inertia_diffs_normalized = inertia_diffs / np.abs(inertias[:-1])
     elbow_index = (
         np.argmax(inertia_diffs_normalized) if len(inertia_diffs_normalized) > 0 else 0
     )
 
-    # Consider silhouette scores too (higher is better)
     silhouette_index = (
         np.argmax(silhouette_scores_list) if silhouette_scores_list else 0
     )
 
-    # Balance between elbow method and silhouette score
-    # If they agree, use that value, otherwise prefer silhouette
     if silhouette_scores_list and abs(elbow_index - silhouette_index) <= 1:
         optimal_k = list(k_values)[silhouette_index]
     elif silhouette_scores_list:
@@ -94,13 +74,6 @@ def determine_optimal_clusters(
 
 
 def plot_elbow_method(visualization_data: Dict[str, Any], optimal_k: int) -> None:
-    """
-    Generate and display an elbow method plot to visualize the optimal number of clusters.
-
-    Args:
-        visualization_data: Dictionary containing k_values, inertias, and silhouette_scores
-        optimal_k: The determined optimal number of clusters
-    """
     k_values = visualization_data["k_values"]
     inertias = visualization_data["inertias"]
     silhouette_scores = visualization_data["silhouette_scores"]
@@ -109,10 +82,8 @@ def plot_elbow_method(visualization_data: Dict[str, Any], optimal_k: int) -> Non
         console.print("[yellow]Not enough data to generate elbow method plot[/yellow]")
         return
 
-    # Create figure with secondary y-axis
     fig = go.Figure()
 
-    # Add inertia trace
     fig.add_trace(
         go.Scatter(
             x=k_values,
@@ -123,9 +94,7 @@ def plot_elbow_method(visualization_data: Dict[str, Any], optimal_k: int) -> Non
         )
     )
 
-    # Add silhouette score trace if available
     if silhouette_scores:
-        # Create secondary Y axis
         fig.add_trace(
             go.Scatter(
                 x=k_values,
@@ -137,7 +106,6 @@ def plot_elbow_method(visualization_data: Dict[str, Any], optimal_k: int) -> Non
             )
         )
 
-    # Add vertical line at optimal_k
     if optimal_k in k_values:
         optimal_index = k_values.index(optimal_k)
         fig.add_vline(
@@ -148,7 +116,6 @@ def plot_elbow_method(visualization_data: Dict[str, Any], optimal_k: int) -> Non
             annotation_position="top right",
         )
 
-    # Update layout
     fig.update_layout(
         title="Elbow Method for Optimal k",
         xaxis_title="Number of Clusters (k)",
@@ -157,7 +124,6 @@ def plot_elbow_method(visualization_data: Dict[str, Any], optimal_k: int) -> Non
         hovermode="x unified",
     )
 
-    # Add secondary y-axis for silhouette score if needed
     if silhouette_scores:
         fig.update_layout(
             yaxis2=dict(
@@ -165,7 +131,6 @@ def plot_elbow_method(visualization_data: Dict[str, Any], optimal_k: int) -> Non
             )
         )
 
-    # Show the figure
     fig.show()
 
 
@@ -183,25 +148,19 @@ def cluster_reviews(
     if not reviews_with_embeddings:
         return []
 
-    # Add this check before normalization
     embeddings = [review["embedding"] for review in reviews_with_embeddings]
-    # Check for zero vectors before normalization
     for i, vec in enumerate(embeddings):
-        if np.linalg.norm(vec) < 1e-10:  # Almost zero
+        if np.linalg.norm(vec) < 1e-10:
             print(f"Warning: Vector {i} has near-zero norm")
 
-    # Then normalize with protection against division by zero
     embeddings = [vec / (np.linalg.norm(vec) + 1e-10) for vec in embeddings]
-    # Determine optimal number of clusters if not specified
 
-    # After normalization, add these checks
     embed_array = np.array(embeddings)
     print(f"Max value in embeddings: {np.max(embed_array)}")
     print(f"Min value in embeddings: {np.min(embed_array)}")
     print(f"Any NaN: {np.isnan(embed_array).any()}")
     print(f"Any Inf: {np.isinf(embed_array).any()}")
 
-    # Perform clustering
     X = np.array(embeddings)
     X = np.clip(X, -100, 100)
     assert not np.isnan(X).any(), "NaNs in embeddings"
@@ -212,14 +171,11 @@ def cluster_reviews(
     )
     labels = kmeans.fit_predict(X)
 
-    # Assign cluster labels to reviews
     for i, review in enumerate(reviews_with_embeddings):
         review["cluster"] = int(labels[i])
 
-    # Calculate cluster centers
     centers = kmeans.cluster_centers_
 
-    # Organize reviews by cluster
     clusters = {}
     for i, review in enumerate(reviews_with_embeddings):
         cluster_id = review["cluster"]
@@ -231,36 +187,30 @@ def cluster_reviews(
             }
         clusters[cluster_id]["reviews"].append(review)
 
-    # Calculate cluster metrics
     cluster_results = []
     for cluster_id, cluster in clusters.items():
         reviews = cluster["reviews"]
         center = cluster["center"]
 
-        # Calculate distances from center
         distances = []
         ratings = []
         for review in reviews:
             embedding = np.array(review["embedding"])
-            # Cosine distance
-            EPSILON = 1e-8  # You already have this, which is good
+            EPSILON = 1e-8
             norm_center = np.linalg.norm(center) + EPSILON
             norm_embedding = np.linalg.norm(embedding) + EPSILON
             distance = 1 - (np.dot(embedding, center) / (norm_embedding * norm_center))
             review["distance_from_center"] = float(distance)
             distances.append(distance)
 
-            # Extract rating
             try:
                 rating = float(review.get("review_rating", 0))
                 ratings.append(rating)
             except (ValueError, TypeError):
                 pass
 
-        # Sort reviews by distance from center
         sorted_reviews = sorted(reviews, key=lambda x: x["distance_from_center"])
 
-        # Calculate cluster metrics
         mean_distance = float(np.mean(distances)) if distances else 0
         avg_rating = float(np.mean(ratings)) if ratings else 0
 
@@ -275,7 +225,6 @@ def cluster_reviews(
             }
         )
 
-    # Sort clusters by average rating (ascending, from worst to best)
     cluster_results = sorted(cluster_results, key=lambda x: x["avg_rating"])
 
     return cluster_results
@@ -289,42 +238,22 @@ def hdbscan_cluster_reviews(
     umap_n_neighbors: int = 15,
     umap_n_components: int = 10,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """
-    Cluster reviews using HDBSCAN algorithm, which can detect outliers.
-
-    Args:
-        reviews_with_embeddings: List of review dictionaries with embeddings
-        min_cluster_size: Minimum number of points to form a cluster
-        min_samples: Controls the resilience to noise
-        use_umap: Whether to use UMAP dimensionality reduction
-        umap_n_neighbors: Number of neighbors for UMAP
-        umap_n_components: Number of components for dimensionality reduction
-
-    Returns:
-        Tuple of (list of clusters, list of unclustered reviews)
-    """
     if not reviews_with_embeddings:
         return [], []
 
-    # Extract embeddings
     embeddings = [review["embedding"] for review in reviews_with_embeddings]
 
-    # Normalize embeddings
-    # Check for zero vectors before normalization
     for i, vec in enumerate(embeddings):
-        if np.linalg.norm(vec) < 1e-10:  # Almost zero
+        if np.linalg.norm(vec) < 1e-10:
             print(f"Warning: Vector {i} has near-zero norm")
 
-    # Then normalize with protection against division by zero
     embeddings = [vec / (np.linalg.norm(vec) + 1e-10) for vec in embeddings]
 
-    # Convert to numpy array
     X = np.array(embeddings)
     X = np.clip(X, -100, 100)
     assert not np.isnan(X).any(), "NaNs in embeddings"
     assert not np.isinf(X).any(), "Infinite values in embeddings"
 
-    # Optional dimensionality reduction with UMAP
     if use_umap:
         console.print("[green]Reducing dimensionality with UMAP...[/green]")
         X = UMAP(
@@ -336,7 +265,6 @@ def hdbscan_cluster_reviews(
             f"[green]Reduced dimensionality to {umap_n_components} components[/green]"
         )
 
-    # Apply HDBSCAN clustering
     console.print(
         f"[green]Applying HDBSCAN clustering with min_cluster_size={min_cluster_size}, min_samples={min_samples}...[/green]"
     )
@@ -345,7 +273,6 @@ def hdbscan_cluster_reviews(
     )
     labels = clusterer.fit_predict(X)
 
-    # Count clusters and outliers
     unique_labels = set(labels)
     n_clusters = len(unique_labels) - (1 if -1 in unique_labels else 0)
     n_outliers = np.sum(labels == -1)
@@ -354,21 +281,17 @@ def hdbscan_cluster_reviews(
         f"[green]Found {n_clusters} clusters and {n_outliers} outliers[/green]"
     )
 
-    # Assign cluster labels to reviews
     for i, review in enumerate(reviews_with_embeddings):
         review["cluster"] = int(labels[i])
         if hasattr(clusterer, "outlier_scores_"):
             review["outlier_score"] = float(clusterer.outlier_scores_[i])
 
-    # Separate clustered and unclustered reviews
     clustered_reviews = [r for r in reviews_with_embeddings if r["cluster"] != -1]
     unclustered_reviews = [r for r in reviews_with_embeddings if r["cluster"] == -1]
 
-    # If we have no clusters, return early
     if not clustered_reviews:
         return [], unclustered_reviews
 
-    # Organize reviews by cluster
     clusters = {}
     for review in clustered_reviews:
         cluster_id = review["cluster"]
@@ -379,21 +302,17 @@ def hdbscan_cluster_reviews(
             }
         clusters[cluster_id]["reviews"].append(review)
 
-    # Calculate cluster metrics and centers
     cluster_results = []
     for cluster_id, cluster in clusters.items():
         reviews = cluster["reviews"]
 
-        # Calculate cluster center (centroid)
         cluster_embeddings = np.array([r["embedding"] for r in reviews])
         center = np.mean(cluster_embeddings, axis=0)
 
-        # Calculate distances from center
         distances = []
         ratings = []
         for review in reviews:
             embedding = np.array(review["embedding"])
-            # Cosine distance
             EPSILON = 1e-8
             norm_center = np.linalg.norm(center) + EPSILON
             norm_embedding = np.linalg.norm(embedding) + EPSILON
@@ -401,17 +320,14 @@ def hdbscan_cluster_reviews(
             review["distance_from_center"] = float(distance)
             distances.append(distance)
 
-            # Extract rating
             try:
                 rating = float(review.get("review_rating", 0))
                 ratings.append(rating)
             except (ValueError, TypeError):
                 pass
 
-        # Sort reviews by distance from center
         sorted_reviews = sorted(reviews, key=lambda x: x["distance_from_center"])
 
-        # Calculate cluster metrics
         mean_distance = float(np.mean(distances)) if distances else 0
         avg_rating = float(np.mean(ratings)) if ratings else 0
 
@@ -426,12 +342,10 @@ def hdbscan_cluster_reviews(
             }
         )
 
-    # Sort clusters by average rating (ascending, from worst to best)
     cluster_results = sorted(
         cluster_results, key=lambda x: x["avg_rating"], reverse=True
     )
 
-    # Sort unclustered reviews by outlier score if available
     if unclustered_reviews and "outlier_score" in unclustered_reviews[0]:
         unclustered_reviews = sorted(
             unclustered_reviews, key=lambda x: x.get("outlier_score", 0), reverse=False

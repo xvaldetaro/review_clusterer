@@ -27,6 +27,16 @@ foo.bar(arg1, arg2)
 
 Only keep local state if necessary, e.g. if you create a DB wrapper for a certain file, then keep that file as state. Otherwise just use pure functions and use Classes as just a way to group functions.
 
+## Be concise with comments
+
+Keep comments minimal and focused on non-obvious information:
+- Don't add comments that restate what the code already shows
+- Only document parameter ranges/constraints that aren't evident from the type hints
+- Skip "Args:" and "Returns:" sections that just repeat parameter and return types 
+- Don't add class docstrings that only restate the class name
+- Focus on explaining "why" not "what" when a rationale is needed
+- Keep CLI command docstrings short and direct 
+
 ## Baby steps in slices, not layers
 
 Create functionality in slices instead of layers. I.e. don't create all CLI commands, then all Controller modules.

@@ -39,15 +39,7 @@ def csv_test(csv_file_path):
     "--local", is_flag=True, help="Use local embedder instead of VoyageAI API"
 )
 def index(csv_file_path, local):
-    """
-    Process a CSV file, create embeddings, and save to a ChromaDB vector database.
-
-    The database will be named after the CSV file (without extension) and will
-    be stored in the same directory as the CSV file.
-
-    By default, the embeddings are created using VoyageAI API. Use the --local
-    flag to use a local sentence-transformers model instead.
-    """
+    """Process a CSV file, create embeddings, and save to a ChromaDB vector database."""
     index_controller(Path(csv_file_path), use_local_embedder=local)
 
 
@@ -61,14 +53,7 @@ def index(csv_file_path, local):
 )
 @click.option("--top", default=3, help="Number of top results to display")
 def search(csv_file_path, local, top):
-    """
-    Load a ChromaDB database matching the CSV file name and provide an interactive search interface.
-
-    Enter search queries to find semantically similar reviews. The database must have been
-    previously created with the 'index' command.
-
-    Type 'exit' to exit the search mode.
-    """
+    """Interactive search interface for finding semantically similar reviews."""
     search_controller(Path(csv_file_path), use_local_embedder=local, top_n=top)
 
 
@@ -126,31 +111,7 @@ def cluster(
     output_markdown,
     output_path,
 ):
-    """
-    Cluster reviews based on their embeddings and display the results.
-
-    This command will:
-    1. Load a ChromaDB database matching the CSV file name
-    2. Run a clustering algorithm to group similar reviews
-    3. Display the resulting clusters sorted by average review rating (worst to best)
-       with statistics and representative reviews
-
-    The database must have been previously created with the 'index' command.
-
-    Two clustering methods are available:
-    - K-means (default): Requires number of clusters, assigns all reviews to clusters
-    - HDBSCAN (with --hdbscan): Automatically finds clusters, identifies outliers
-
-    When using HDBSCAN, you can adjust:
-    - min-cluster-size: Minimum reviews to form a cluster (default: 10)
-    - min-samples: Controls how conservative clustering is (default: 5)
-    - UMAP dimensionality reduction (enabled by default)
-
-    Output options:
-    - By default, results are displayed in the console
-    - Use --output-markdown to generate a markdown report file instead
-    - Use --output-path to specify a custom path for the markdown report
-    """
+    """Cluster reviews based on their embeddings and display the results."""
     if hdbscan and clusters is not None:
         click.echo("Warning: When using HDBSCAN, the 'clusters' argument is ignored as cluster count is determined automatically")
 
@@ -180,18 +141,7 @@ def cluster(
     "--local", is_flag=True, help="Use local embedder instead of VoyageAI API"
 )
 def do_plot_elbow(csv_file_path, local):
-    """
-    Cluster reviews based on their embeddings and display the results.
-
-    This command will:
-    1. Load a ChromaDB database matching the CSV file name
-    2. Determine the optimal number of clusters (if not specified)
-    3. Run a clustering algorithm to group similar reviews
-    4. Display the resulting clusters sorted by average review rating (worst to best)
-       with statistics and representative reviews
-
-    The database must have been previously created with the 'index' command.
-    """
+    """Plot the elbow method to determine the optimal number of clusters."""
     plot_cluster_distribution(Path(csv_file_path), use_local_embedder=local)
 
 
@@ -205,15 +155,7 @@ def do_plot_elbow(csv_file_path, local):
     help="Path to a file containing the API key"
 )
 def llm_test(provider, model, prompt, api_key_file):
-    """
-    Test the LLM client with a simple prompt.
-    
-    This command sends a prompt to the specified LLM provider and displays the response.
-    It can use either OpenAI or Anthropic (Claude) as the provider.
-    
-    API keys can be provided via environment variables (OPENAI_API_KEY or ANTHROPIC_API_KEY)
-    or via a file specified with --api-key-file.
-    """
+    """Test the LLM client with a simple prompt."""
     api_key_path = Path(api_key_file) if api_key_file else None
     llm_test_controller(provider, prompt, model, api_key_path)
 
@@ -237,17 +179,7 @@ def llm_test(provider, model, prompt, api_key_file):
     help="Path to a file containing the API key"
 )
 def llm_structured_test(provider, model, prompt, schema_file, api_key_file):
-    """
-    Test the LLM client with a structured output request.
-    
-    This command sends a prompt to the specified LLM provider and requests a structured
-    JSON response based on the provided schema.
-    
-    API keys can be provided via environment variables (OPENAI_API_KEY or ANTHROPIC_API_KEY)
-    or via a file specified with --api-key-file.
-    
-    If no schema file is provided, a default schema for sentiment analysis will be used.
-    """
+    """Test the LLM client with a structured output request."""
     import json
     
     schema = None

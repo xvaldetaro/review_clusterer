@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 """
-Interactive script for testing ChromaDB repository.
 Run with: poetry run python scripts/interactive_chroma.py <collection_name> <persist_directory>
 """
 
@@ -22,7 +21,6 @@ def main():
         print(f"Error: Persist directory {persist_directory} does not exist.")
         sys.exit(1)
 
-    # Create repository instance
     repo = ChromaRepository(collection_name, persist_directory)
     print(f"Connected to ChromaDB collection: {collection_name}")
     print(f"Database location: {persist_directory}")
@@ -33,7 +31,6 @@ def main():
     print("  - results = repo.get_all_reviews()")
     print("  - repo.query_reviews([0.1, 0.2, ...], n_results=3)")
 
-    # Make repo available in the interactive shell
     import code
     code.interact(local=locals())
 

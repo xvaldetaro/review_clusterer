@@ -29,18 +29,15 @@ class ChromaRepository:
         self.collection_name = collection_name
         self.persist_directory = persist_directory
 
-        # Initialize client with persistence settings
         self.client = chromadb.PersistentClient(
             path=str(persist_directory), settings=Settings(allow_reset=True)
         )
 
-        # Create or get the collection
         if delete_existing_collection:
             console.print("Deleting existing collection...")
             try:
                 self.client.delete_collection(name=self.collection_name)
             except chromadb.errors.NotFoundError:
-                # Collection doesn't exist yet, which is fine
                 pass
 
         self.collection = self.client.get_or_create_collection(
@@ -50,34 +47,16 @@ class ChromaRepository:
         )
 
     def delete_database(directory: Path) -> bool:
-        """
-        Delete the entire database directory if using persistent storage.
-
-        Returns:
-            True if database was deleted, False if using in-memory db
-        """
         shutil.rmtree(directory)
 
     def add_reviews(self, reviews: List[Dict[str, Any]]) -> None:
-        """
-        Add review embeddings to the ChromaDB collection.
-
-        Args:
-            reviews: A list of review dictionaries, each containing at minimum:
-                   - 'id': Unique identifier for the review
-                   - 'embedding': The embedding vector
-                   - 'formatted_text': The formatted text that was embedded
-                   - Additional metadata fields will be stored as is
-        """
         if not reviews:
             return
 
-        # Extract the required components for ChromaDB
         ids = [str(review["id"]) for review in reviews]
         embeddings = [review["embedding"] for review in reviews]
         documents = [review["formatted_text"] for review in reviews]
 
-        # Extract metadata (exclude fields not needed in metadata)
         metadatas = []
         for review in reviews:
             metadata = {
@@ -86,14 +65,12 @@ class ChromaRepository:
                 if k not in ["embedding", "formatted_text"]
             }
 
-            # Ensure all metadata values are strings or numbers
             for key, value in metadata.items():
                 if not isinstance(value, (str, int, float, bool)):
                     metadata[key] = str(value)
 
             metadatas.append(metadata)
 
-        # After creating your large dataset
         batches = create_batches(
             api=self.client,
             ids=ids,
@@ -113,16 +90,6 @@ class ChromaRepository:
     def query_reviews(
         self, query_embedding: List[float], n_results: int = 5
     ) -> Dict[str, Any]:
-        """
-        Query the collection for reviews similar to the query embedding.
-
-        Args:
-            query_embedding: Embedding vector to query with
-            n_results: Number of results to return
-
-        Returns:
-            Query results containing ids, documents, and metadatas
-        """
         results = self.collection.query(
             query_embeddings=[query_embedding],
             n_results=n_results,
@@ -132,19 +99,7 @@ class ChromaRepository:
         return results
 
     def get_all_reviews(self) -> Dict[str, Any]:
-        """
-        Get all reviews from the collection.
-
-        Returns:
-            All reviews in the collection with their embeddings
-        """
         return self.collection.get(include=["embeddings", "documents", "metadatas"])
 
     def count(self) -> int:
-        """
-        Get the number of reviews in the collection.
-
-        Returns:
-            Number of reviews
-        """
         return self.collection.count()

@@ -24,7 +24,6 @@ def get_embeddings(csv_file_path: Path, use_local_embedder: bool = False):
         csv_file_path, embedder_name
     )
 
-    # Check if the database exists
     if not db_directory.exists():
         console.print(
             f"[red]Error: ChromaDB database not found at {db_directory}[/red]"
@@ -34,13 +33,11 @@ def get_embeddings(csv_file_path: Path, use_local_embedder: bool = False):
         )
         return
 
-    # Initialize repository
     console.print(f"[green]Loading ChromaDB collection: {collection_name}[/green]")
     repo = ChromaRepository(
         collection_name=collection_name, persist_directory=db_directory
     )
 
-    # Check if the collection has any reviews
     review_count = repo.count()
     if review_count == 0:
         console.print(f"[red]Error: Collection '{collection_name}' is empty[/red]")
@@ -48,11 +45,9 @@ def get_embeddings(csv_file_path: Path, use_local_embedder: bool = False):
 
     console.print(f"[green]Found {review_count} reviews in the collection[/green]")
 
-    # Get all reviews with embeddings
     console.print("[green]Loading review embeddings...[/green]")
     all_reviews = repo.get_all_reviews()
 
-    # Convert to list of review dictionaries
     reviews_with_embeddings = []
     for i, (review_id, embedding, document, metadata) in enumerate(
         zip(
@@ -117,10 +112,8 @@ def cluster_controller(
                 f"[green]Displaying {len(clusters)} clusters sorted by average rating (worst to best)...[/green]"
             )
             
-            # Display clusters
             display_clusters(clusters)
             
-            # Display unclustered reviews if any
             if unclustered_reviews:
                 console.print(
                     f"[yellow]Found {len(unclustered_reviews)} unclustered reviews that don't fit into any cluster[/yellow]"
@@ -130,7 +123,6 @@ def cluster_controller(
             console.print(
                 f"[green]Generating markdown report for {len(clusters)} clusters...[/green]"
             )
-            # Generate markdown report
             report_path = generate_report_with_unclustered(
                 clusters, 
                 unclustered_reviews, 
@@ -147,13 +139,11 @@ def cluster_controller(
                 f"[green]Displaying clusters sorted by average rating (worst to best)...[/green]"
             )
             
-            # Display clusters
             display_clusters(clusters)
         else:
             console.print(
                 f"[green]Generating markdown report for {len(clusters)} clusters...[/green]"
             )
-            # Generate markdown report
             report_path = generate_cluster_report(clusters, csv_file_path, output_path)
             console.print(f"[green]Markdown report saved to: {report_path}[/green]")
 
@@ -162,14 +152,7 @@ def cluster_controller(
 
 
 def display_clusters(clusters: list) -> None:
-    """
-    Display the clusters in a formatted output, sorted by average rating (worst to best).
-
-    Args:
-        clusters: List of cluster dictionaries sorted by average rating
-    """
     for i, cluster in enumerate(clusters):
-        # Create a table for this cluster
         table = Table(
             title=f"Cluster {i + 1}/{len(clusters)} (ID: {cluster['id']}): {cluster['review_count']} reviews, "
             f"Mean distance: {cluster['mean_distance']:.4f}, "
@@ -182,10 +165,8 @@ def display_clusters(clusters: list) -> None:
         table.add_column("Title", style="blue")
         table.add_column("Content", style="white")
 
-        # Get the 5 most central reviews
         central_reviews = cluster["reviews"][:5]
 
-        # Add rows for central reviews
         for review in central_reviews:
             review_id = review["id"]
             try:
@@ -197,26 +178,16 @@ def display_clusters(clusters: list) -> None:
             title = review.get("review_title", "")
             content = review.get("review_details", "")
 
-            # Truncate content if too long
             if len(content) > 100:
                 content = content[:97] + "..."
 
             table.add_row(str(review_id), rating, distance, title, content)
 
-        # Display the table
         console.print(table)
         console.print("\n")
 
 
 def display_unclustered_reviews(unclustered_reviews: list, limit: int = 20) -> None:
-    """
-    Display unclustered reviews in a formatted output.
-    
-    Args:
-        unclustered_reviews: List of unclustered review dictionaries
-        limit: Maximum number of reviews to display
-    """
-    # Create a table for unclustered reviews
     table = Table(
         title=f"Unclustered Reviews ({len(unclustered_reviews)} total, showing top {min(limit, len(unclustered_reviews))})"
     )
@@ -227,10 +198,8 @@ def display_unclustered_reviews(unclustered_reviews: list, limit: int = 20) -> N
     table.add_column("Title", style="blue")
     table.add_column("Content", style="white")
     
-    # Get the top N reviews (by outlier score if available)
     reviews_to_display = unclustered_reviews[:limit]
     
-    # Add rows for each review
     for review in reviews_to_display:
         review_id = review["id"]
         try:
@@ -242,12 +211,10 @@ def display_unclustered_reviews(unclustered_reviews: list, limit: int = 20) -> N
         title = review.get("review_title", "")
         content = review.get("review_details", "")
         
-        # Truncate content if too long
         if len(content) > 100:
             content = content[:97] + "..."
         
         table.add_row(str(review_id), rating, outlier_score, title, content)
     
-    # Display the table
     console.print(table)
     console.print("\n")
