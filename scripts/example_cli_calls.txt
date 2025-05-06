@@ -1,0 +1,1 @@
+poetry run review-clusterer llm-structured-test --base-url http://192.168.0.2:1234/v1 --prompt-file ./prompts/analyze_review.md --model unsloth/Qwen3-30B-A3B-GGUF
