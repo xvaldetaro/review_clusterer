@@ -9,6 +9,7 @@ from review_clusterer.framework.clusterer import cluster_reviews, hdbscan_cluste
 from review_clusterer.framework.clusterer import plot_elbow
 from review_clusterer.framework.voyage_embedder import VoyageEmbedder
 from review_clusterer.framework.local_embedder import LocalEmbedder
+from review_clusterer.framework.markdown_report import generate_cluster_report, generate_report_with_unclustered
 
 console = Console()
 
@@ -89,6 +90,8 @@ def cluster_controller(
     use_umap: bool = True,
     umap_n_neighbors: int = 15,
     umap_n_components: int = 10,
+    output_markdown: bool = False,
+    output_path: Path = None,
 ) -> None:
     start_time = time.time()
 
@@ -109,29 +112,50 @@ def cluster_controller(
             umap_n_components=umap_n_components,
         )
         
-        console.print(
-            f"[green]Displaying {len(clusters)} clusters sorted by average rating (worst to best)...[/green]"
-        )
-        
-        # Display clusters
-        display_clusters(clusters)
-        
-        # Display unclustered reviews if any
-        if unclustered_reviews:
+        if not output_markdown:
             console.print(
-                f"[yellow]Found {len(unclustered_reviews)} unclustered reviews that don't fit into any cluster[/yellow]"
+                f"[green]Displaying {len(clusters)} clusters sorted by average rating (worst to best)...[/green]"
             )
-            display_unclustered_reviews(unclustered_reviews)
+            
+            # Display clusters
+            display_clusters(clusters)
+            
+            # Display unclustered reviews if any
+            if unclustered_reviews:
+                console.print(
+                    f"[yellow]Found {len(unclustered_reviews)} unclustered reviews that don't fit into any cluster[/yellow]"
+                )
+                display_unclustered_reviews(unclustered_reviews)
+        else:
+            console.print(
+                f"[green]Generating markdown report for {len(clusters)} clusters...[/green]"
+            )
+            # Generate markdown report
+            report_path = generate_report_with_unclustered(
+                clusters, 
+                unclustered_reviews, 
+                csv_file_path, 
+                output_path
+            )
+            console.print(f"[green]Markdown report saved to: {report_path}[/green]")
     else:
         console.print("[green]Using K-means clustering algorithm...[/green]")
         clusters = cluster_reviews(reviews_with_embeddings, n_clusters)
         
-        console.print(
-            f"[green]Displaying clusters sorted by average rating (worst to best)...[/green]"
-        )
-        
-        # Display clusters
-        display_clusters(clusters)
+        if not output_markdown:
+            console.print(
+                f"[green]Displaying clusters sorted by average rating (worst to best)...[/green]"
+            )
+            
+            # Display clusters
+            display_clusters(clusters)
+        else:
+            console.print(
+                f"[green]Generating markdown report for {len(clusters)} clusters...[/green]"
+            )
+            # Generate markdown report
+            report_path = generate_cluster_report(clusters, csv_file_path, output_path)
+            console.print(f"[green]Markdown report saved to: {report_path}[/green]")
 
     elapsed_time = time.time() - start_time
     console.print(f"[green]Clustering completed in {elapsed_time:.2f} seconds[/green]")

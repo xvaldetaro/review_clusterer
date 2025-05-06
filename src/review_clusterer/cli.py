@@ -101,6 +101,14 @@ def search(csv_file_path, local, top):
     "--umap-components", type=int, default=10,
     help="Number of components for dimensionality reduction (HDBSCAN only)"
 )
+@click.option(
+    "--output-markdown", is_flag=True,
+    help="Generate a markdown report instead of console output"
+)
+@click.option(
+    "--output-path", type=click.Path(file_okay=True, dir_okay=False, writable=True),
+    help="Path where to save the markdown report (only used with --output-markdown)"
+)
 def cluster(
     csv_file_path, 
     clusters, 
@@ -111,6 +119,8 @@ def cluster(
     no_umap,
     umap_neighbors,
     umap_components,
+    output_markdown,
+    output_path,
 ):
     """
     Cluster reviews based on their embeddings and display the results.
@@ -131,9 +141,16 @@ def cluster(
     - min-cluster-size: Minimum reviews to form a cluster (default: 10)
     - min-samples: Controls how conservative clustering is (default: 5)
     - UMAP dimensionality reduction (enabled by default)
+
+    Output options:
+    - By default, results are displayed in the console
+    - Use --output-markdown to generate a markdown report file instead
+    - Use --output-path to specify a custom path for the markdown report
     """
     if hdbscan and clusters is not None:
         click.echo("Warning: When using HDBSCAN, the 'clusters' argument is ignored as cluster count is determined automatically")
+
+    output_path_obj = Path(output_path) if output_path else None
 
     cluster_controller(
         Path(csv_file_path), 
@@ -145,6 +162,8 @@ def cluster(
         use_umap=not no_umap,
         umap_n_neighbors=umap_neighbors,
         umap_n_components=umap_components,
+        output_markdown=output_markdown,
+        output_path=output_path_obj,
     )
 
 
