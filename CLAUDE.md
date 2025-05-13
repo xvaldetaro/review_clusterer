@@ -1,28 +1,41 @@
-## General Python project guidelines
-(I will already have the setup done by myself. No need to do anything, but just know that this is it)
-1. Python 3.12 using pyenv local
-2. Use Poetry for dependency management and packaging
-3. Run code with `poetry run <command>`
+# Python Development Guidelines
 
-## Avoid unnecessary state
-Avoid having unnecessary Class members in python. I commonly see generated files having a generated class that receives a few parameters in its constructor to simply use them in a function call. Something like:
+## Environment
+- Python 3.12 (managed via pyenv)
+- Poetry for dependency management
+- Run commands with `poetry run <command>`
 
+## Coding Principles
+
+### Prefer Pure Functions
+Avoid unnecessary class state. Only keep state when truly needed (e.g., DB connections).
+
+```python
+# Prefer this:
+result = process_data(arg1, arg2)
+# Or this:
+processor = Processor()
+result = processor.process(arg1, arg2)
+
+# Instead of:
+processor = Processor(arg1, arg2)
+result = processor.process()
 ```
-foo = Foo(arg1, arg2)
-foo.bar()
-```
 
-instead of simply
+### Minimal __init__.py Files
+Only create __init__.py files in the root package. Skip them in subfolders unless needed for imports.
 
-```
-foo = bar(arg1, arg2)
-# or
-foo = Foo()
-foo.bar(arg1, arg2)
-```
+## Project Documentation
 
-Only keep local state if necessary, e.g. if you create a DB wrapper for a certain file, then keep that file as state. Otherwise just use pure functions and use Classes as just a way to group functions.
+The project has documentation files in the ai_docs directory:
 
-## Avoid unnecessary **init**.py files
+### Reference Documentation
+- **ai_docs/specs/overview.md**: High-level project description and key technologies. This provides essential context about what the system does without overwhelming details.
 
-Only create **init**.py files in the root package to make it importable. Don't add empty **init**.py files in subfolders unless they are specifically needed for imports.
+- **ai_docs/specs/implementation_details.md**: Detailed architecture information. Reference this when:
+  - Making structural changes to the codebase
+  - Adding new features that need to integrate with existing components
+  - Needing insight on module interactions
+
+### Prompt Templates
+- **ai_docs/prompts/**: Contains LLM prompt templates used in the application

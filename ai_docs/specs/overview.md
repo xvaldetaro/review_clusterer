@@ -1,9 +1,8 @@
 # Project Overview
 
-This is a "Customer Review Analysis System" - a Python-based tool that processes customer reviews using embeddings to enable semantic search and clustering. This system helps businesses extract insights
-from reviews through vector-based analysis of text content.
+This is a "Customer Review Analysis System" - a Python-based tool that processes customer reviews using embeddings to enable semantic search and clustering. This system helps businesses extract insights from reviews through vector-based analysis of text content.
 
-Functionality Breakdown:
+## Functionality Breakdown:
 
 1. Process and embed customer reviews from CSV files
    1.1. CSV files of reviews have the columns format `id,created_at,reviewer_name,date,review_title,review_details,review_rating,url`
@@ -15,4 +14,10 @@ Functionality Breakdown:
 7. (TODO) Test alternative approach of Clustering reviews entirely by asking LLMs to do so. Probably send small batches of reviews and a summary of all existing clusters (starts with 0). LLM responds in JSON telling which cluster each review goes to.
 7.1. Parallel request multiple LLMs for each batch of reviews and get most reasonable result (with another LLM judge)
 
-# Project Details
+## Key Technologies
+
+- **Embedding**: VoyageAI API (remote) or sentence-transformers (local)
+- **Vector Database**: ChromaDB for storing and querying embeddings
+- **Clustering**: HDBSCAN (or K-means) with optional UMAP reduction
+- **LLM Integration**: OpenAI-compatible API for text analysis
+- **CLI Interface**: Click library for command-line interface
