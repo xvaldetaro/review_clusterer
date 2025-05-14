@@ -1,28 +1,8 @@
-Read CLAUDE.md and CLAUDE_CHECKLIST.md.
+Let's start with step 6. Cluster Refinement of ${ai_docs/specs/overview.md}
 
-We have already finished all the initial implementations and everything is working. Now I want to create functionality to further analyze the review clusters. I want to use an assistant LLM like Claude, or ChatGPT to read (up to its context size) the clusters, come up with summaries for clusters, mark relevant and irrelevant clusters and then look at unclustered reviews for things that should have been clustered and add them to the clusters.
+We have clustering working. And also have a client that calls LLMs successfully for step 6 and 7.
 
-Now my first question is how should we proceed in terms of the project structure here. I'm afraid keeping the same CLAUDE.md and the context for this whole current project will create more noise than good, but this is my first project with an AI coding assistant so I don't know the best approach.
+Cluster refinement will start from N buckets of clusters and the N+1 Bucket of unclustered reviews. The desired output is a list of M buckets of very cohesive thoroughly checked and annotated reviews (and no unclustered reviews anymore).
 
-Should we create a kind an api, or just a SQL table that summarizes the end to end functionality of the `cluster` command. Something like:
-Option1
-
-```
-interface Review {
-  id,created_at,reviewer_name,date,review_title
-}
-interface Cluster {
-  avg_score, mean_distance,
-  reviews: List<Review>
-}
-interface ReviewReport {
-  all_reviews: List<Review>,
-  clusters: <List<Cluster>>,
-  unclustered_reviews: List<Review>,
-}
-def generate_cluster_report(csv_file: str): ReviewReport
-```
-
-Option2: Definition of sql tables schemas for Reviews, Clusters(for the metadata and id) and ClusteredReviews (keys to review and cluster)
-
-Or we should keep going with the same project as is and continue to just ask you to generate more functionality on top of what we have
+I want you to first give me a sample output of the cluster refinement algorithm. You can get a sample input from my last cluster run in @~/temp/voyageai_report.md
+I believe having this sample output (just bits of it for brevity) will help me think about the problem

@@ -10,9 +10,9 @@ This is a "Customer Review Analysis System" - a Python-based tool that processes
 3. Cluster reviews to identify common themes and sentiments using HDBSCAN
 4. Search reviews using semantic similarity (distance in chromadb)
 5. Visualize reviews with formatted output
-6. (TODO) Analyze clusters using LLMs to generate insights and summaries
-7. (TODO) Test alternative approach of Clustering reviews entirely by asking LLMs to do so. Probably send small batches of reviews and a summary of all existing clusters (starts with 0). LLM responds in JSON telling which cluster each review goes to.
-7.1. Parallel request multiple LLMs for each batch of reviews and get most reasonable result (with another LLM judge)
+6. (TODO) Cluster Refinement: Dedup, break apart, merge, summarize and annotate clusters using LLMs.
+7. (TODO) Test alternative approach of Clustering reviews entirely by asking LLMs to do so. We start with all reviews being in the unclustered bucket and then run the same algorithm of (6. Cluster Refinement)
+8. Parallel request multiple LLMs for each batch of reviews and get most reasonable result (with another LLM judge)
 
 ## Key Technologies
 
